@@ -358,7 +358,23 @@ body {
   line-height: 1.4;
   letter-spacing: 0.01em;
 }
-.empty svg { opacity: 0.35; margin-bottom: 14px; }
+.empty svg { opacity: 0.35; margin-bottom: 12px; }
+
+.more {
+  display: block;
+  width: 100%;
+  border: none;
+  background: var(--bg-elevated);
+  color: var(--accent);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 12px;
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  margin-top: 10px;
+  box-shadow: var(--shadow-card);
+}
 
 /* ---- donate ------------------------------------------------------------------- */
 

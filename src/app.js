@@ -1,7 +1,7 @@
 // Sahara — app wiring. Pure logic lives in normalize.js / logic.js; this file
 // owns DOM rendering, state, events, and the sync lifecycle.
 
-import { ENDPOINTS, EMERGENCY } from './config.js';
+import { ENDPOINTS, EMERGENCY, PAGE_LIMIT } from './config.js';
 import { setLang, getLang, t } from './i18n.js';
 import {
   normalizePersons,
@@ -19,10 +19,8 @@ import {
   formatCount,
 } from './logic.js';
 import {
-  fetchPersonReports,
-  fetchDeadBodies,
+  fetchPage,
   fetchDonations,
-  fetchGovEfforts,
   fetchStats,
 } from './api.js';
 import { saveSnapshot, loadSnapshot, savePrefs, loadPrefs } from './store.js';
@@ -42,6 +40,9 @@ function esc(s) {
 
 // ---- state -----------------------------------------------------------------
 
+// How many cards to render at once (lists can reach tens of thousands of records).
+const RENDER_STEP = 250;
+
 const ui = {
   tab: 'people',
   peopleState: 'lost',
@@ -50,6 +51,8 @@ const ui = {
   source: 'all',
   peopleQ: '',
   deadQ: '',
+  peopleLimit: RENDER_STEP,
+  deadLimit: RENDER_STEP,
 };
 
 let snapshot = null; // { persons, bodies, donations, stats, efforts, syncedAt }
@@ -161,9 +164,17 @@ function renderPeople() {
     list.innerHTML = '';
     empty.textContent = t(ui.peopleQ ? 'noResults' : 'emptyLost');
     empty.classList.remove('hidden');
+    $('#people-more').classList.add('hidden');
   } else {
     empty.classList.add('hidden');
-    list.innerHTML = results.map(personCard).join('');
+    list.innerHTML = results.slice(0, ui.peopleLimit).map(personCard).join('');
+    const more = $('#people-more');
+    if (results.length > ui.peopleLimit) {
+      more.textContent = `${t('loadMore')} (${formatCount(results.length - ui.peopleLimit)})`;
+      more.classList.remove('hidden');
+    } else {
+      more.classList.add('hidden');
+    }
   }
 }
 
@@ -209,9 +220,17 @@ function renderDead() {
     list.innerHTML = '';
     empty.textContent = t(ui.deadQ ? 'noResults' : 'emptyDead');
     empty.classList.remove('hidden');
+    $('#dead-more').classList.add('hidden');
   } else {
     empty.classList.add('hidden');
-    list.innerHTML = results.map(bodyCard).join('');
+    list.innerHTML = results.slice(0, ui.deadLimit).map(bodyCard).join('');
+    const more = $('#dead-more');
+    if (results.length > ui.deadLimit) {
+      more.textContent = `${t('loadMore')} (${formatCount(results.length - ui.deadLimit)})`;
+      more.classList.remove('hidden');
+    } else {
+      more.classList.add('hidden');
+    }
   }
 }
 
@@ -301,6 +320,7 @@ function renderInfo() {
 
 function selectPeople(state) {
   ui.peopleState = state;
+  ui.peopleLimit = RENDER_STEP;
   const seg = $('#seg-people');
   if (seg) {
     seg.dataset.idx = state === 'lost' ? '0' : '1';
@@ -311,6 +331,7 @@ function selectPeople(state) {
 
 function selectDead(status) {
   ui.deadStatus = status;
+  ui.deadLimit = RENDER_STEP;
   const seg = $('#seg-dead');
   if (seg) {
     seg.dataset.idx = status === 'identified' ? '0' : '1';
@@ -350,17 +371,18 @@ function setSync(state, label) {
 async function sync() {
   setSync('syncing', t('syncing'));
   try {
-    const [personsRaw, bodiesRaw, donationsRaw, effortsRaw, statsRaw] = await Promise.all([
-      fetchPersonReports({ onProgress: (p) => setSync('syncing', `${t('syncing')} ${p.fetched}/${p.total ?? '…'}`) }),
-      fetchDeadBodies(),
+    // Phase 1: first page of every endpoint (fast) so the UI renders immediately.
+    const [p1, b1, donationsRaw, effortsRaw, statsRaw] = await Promise.all([
+      fetchPage(ENDPOINTS.personReports, { page: 1, limit: PAGE_LIMIT }),
+      fetchPage(ENDPOINTS.deadBodies, { page: 1, limit: PAGE_LIMIT }),
       fetchDonations(),
-      fetchGovEfforts(),
+      fetchPage(ENDPOINTS.govEfforts, { page: 1, limit: 50 }),
       fetchStats(),
     ]);
 
     snapshot = {
-      persons: normalizePersons(personsRaw.items),
-      bodies: normalizeDeadBodies(bodiesRaw.items),
+      persons: normalizePersons(p1.items),
+      bodies: normalizeDeadBodies(b1.items),
       donations: normalizeDonations(donationsRaw.items),
       stats: statsRaw,
       efforts: (effortsRaw.items || []).map((e) => ({
@@ -369,7 +391,27 @@ async function sync() {
         link: e.link,
       })),
       syncedAt: Date.now(),
+      personsTotal: p1.total || p1.items.length,
+      bodiesTotal: b1.total || b1.items.length,
     };
+    renderAll();
+
+    // Phase 2: drain remaining pages in the background, appending + re-rendering.
+    const drain = async (endpoint, total, normalize, append) => {
+      let page = 2;
+      while ((page - 1) * PAGE_LIMIT < total) {
+        const r = await fetchPage(endpoint, { page, limit: PAGE_LIMIT });
+        append(normalize(r.items));
+        page += 1;
+        if (page % 3 === 0) renderAll(); // periodic UI refresh
+      }
+    };
+
+    await Promise.all([
+      drain(ENDPOINTS.personReports, snapshot.personsTotal, normalizePersons, (xs) => snapshot.persons.push(...xs)),
+      drain(ENDPOINTS.deadBodies, snapshot.bodiesTotal, normalizeDeadBodies, (xs) => snapshot.bodies.push(...xs)),
+    ]);
+
     await saveSnapshot(snapshot);
     setSync('online', `${t('lastSynced')} ${formatDate(snapshot.syncedAt, getLang())}`);
     renderAll();
@@ -418,6 +460,7 @@ function bindEvents() {
 
   const peopleSearch = debounce(() => {
     ui.peopleQ = $('#people-q').value;
+    ui.peopleLimit = RENDER_STEP;
     $('#search-people').classList.toggle('has-value', !!ui.peopleQ);
     renderPeople();
   }, 160);
@@ -429,6 +472,7 @@ function bindEvents() {
 
   const deadSearch = debounce(() => {
     ui.deadQ = $('#dead-q').value;
+    ui.deadLimit = RENDER_STEP;
     $('#search-dead').classList.toggle('has-value', !!ui.deadQ);
     renderDead();
   }, 160);
@@ -444,14 +488,26 @@ function bindEvents() {
     if (!chip) return;
     if (chip.dataset.gender) {
       ui.gender = chip.dataset.gender;
+      ui.peopleLimit = RENDER_STEP;
       renderPeople();
     } else if (chip.dataset.source) {
       ui.source = chip.dataset.source;
+      ui.peopleLimit = RENDER_STEP;
       renderPeople();
     }
   };
   $('#chips-people').addEventListener('click', onChip);
   $('#chips-people-src').addEventListener('click', onChip);
+
+  // load more
+  $('#people-more').addEventListener('click', () => {
+    ui.peopleLimit += RENDER_STEP;
+    renderPeople();
+  });
+  $('#dead-more').addEventListener('click', () => {
+    ui.deadLimit += RENDER_STEP;
+    renderDead();
+  });
 
   // copy account numbers
   document.addEventListener('click', (e) => {
