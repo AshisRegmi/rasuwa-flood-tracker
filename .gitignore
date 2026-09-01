@@ -1,0 +1,7 @@
+node_modules/
+test/fixtures/
+shots/
+mockup.html
+diag.html
+.DS_Store
+*.log

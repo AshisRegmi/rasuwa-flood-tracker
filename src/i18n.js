@@ -1,0 +1,128 @@
+// Bilingual UI strings (Nepali default, English fallback).
+// Keys are the single source of truth for the DOM; app.js applies t() to data-i18n nodes.
+
+const STRINGS = {
+  en: {
+    appName: 'Sahara',
+    tagline: 'Rasuwa Flood Relief',
+    tabPeople: 'People',
+    tabDead: 'Deceased',
+    tabDonate: 'Donate',
+    tabInfo: 'Info',
+    segLost: 'Lost',
+    segFound: 'Found',
+    segDead: 'Deceased',
+    searchPlaceholder: 'Search name, place, age…',
+    filterAll: 'All',
+    filterMale: 'Male',
+    filterFemale: 'Female',
+    filterIdentified: 'Identified',
+    filterUnidentified: 'Unidentified',
+    lastSynced: 'Updated',
+    syncing: 'Syncing…',
+    offline: 'Offline — showing last saved data',
+    noResults: 'No matching records.',
+    emptyLost: 'No one is reported missing right now.',
+    emptyFound: 'No rescues recorded yet.',
+    emptyDead: 'No records here.',
+    totalLost: 'lost',
+    totalFound: 'found',
+    totalDead: 'deceased',
+    totalIdentified: 'identified',
+    totalUnidentified: 'unidentified',
+    genderMale: 'Male',
+    genderFemale: 'Female',
+    genderUnknown: 'Unknown',
+    source: 'Source',
+    age: 'Age',
+    location: 'Location',
+    reported: 'Reported',
+    call: 'Call',
+    share: 'Share',
+    donateTitle: 'Donate',
+    donateLead: 'Official and verified donation channels. Always confirm the account before sending money.',
+    copyAccount: 'Copy account',
+    copied: 'Copied',
+    emergencyTitle: 'Emergency',
+    rescueHotline: 'Rescue',
+    policeHotline: 'Police',
+    infoTitle: 'Information',
+    infoStats: 'Overview',
+    infoSources: 'Data sources',
+    infoEfforts: 'Government efforts',
+    infoAbout: 'About',
+    language: 'नेपाली',
+    verifyNote: 'Records are verified against official sources where possible. If a status is wrong, use the update option.',
+    dignityNote: 'Unidentified records are shown with minimal detail out of respect for the deceased and their families.',
+  },
+  ne: {
+    appName: 'सहारा',
+    tagline: 'रसुवा बाढी राहत',
+    tabPeople: 'व्यक्ति',
+    tabDead: 'मृतक',
+    tabDonate: 'सहयोग',
+    tabInfo: 'जानकारी',
+    segLost: 'बेपत्ता',
+    segFound: 'भेटिएका',
+    segDead: 'मृतक',
+    searchPlaceholder: 'नाम, स्थान, उमेर खोज्नुहोस्…',
+    filterAll: 'सबै',
+    filterMale: 'पुरुष',
+    filterFemale: 'महिला',
+    filterIdentified: 'पहिचान भएका',
+    filterUnidentified: 'पहिचान नभएका',
+    lastSynced: 'अन्तिम अपडेट',
+    syncing: 'अपडेट हुँदै…',
+    offline: 'अफलाइन — अन्तिम सुरक्षित डेटा देखाइँदैछ',
+    noResults: 'मिल्ने विवरण भेटिएन।',
+    emptyLost: 'अहिलेसम्म कोही पनि बेपत्ता भनी रिपोर्ट भएको छैन।',
+    emptyFound: 'अहिलेसम्म कुनै उद्धार रेकर्ड भएको छैन।',
+    emptyDead: 'यहाँ कुनै विवरण छैन।',
+    totalLost: 'बेपत्ता',
+    totalFound: 'भेटिएका',
+    totalDead: 'मृतक',
+    totalIdentified: 'पहिचान भएका',
+    totalUnidentified: 'पहिचान नभएका',
+    genderMale: 'पुरुष',
+    genderFemale: 'महिला',
+    genderUnknown: 'अज्ञात',
+    source: 'स्रोत',
+    age: 'उमेर',
+    location: 'स्थान',
+    reported: 'रिपोर्ट गरिएको',
+    call: 'कल गर्नुहोस्',
+    share: 'सेयर गर्नुहोस्',
+    donateTitle: 'सहयोग गर्नुहोस्',
+    donateLead: 'आधिकारिक र प्रमाणित दान माध्यमहरू। रकम पठाउनुअघि खाता पक्का गर्नुहोस्।',
+    copyAccount: 'खाता कपी गर्नुहोस्',
+    copied: 'कपी भयो',
+    emergencyTitle: 'आपतकालीन सम्पर्क',
+    rescueHotline: 'उद्धार',
+    policeHotline: 'प्रहरी',
+    infoTitle: 'जानकारी',
+    infoStats: 'सारांश',
+    infoSources: 'डेटाका स्रोतहरू',
+    infoEfforts: 'सरकारी प्रयासहरू',
+    infoAbout: 'बारेमा',
+    language: 'English',
+    verifyNote: 'विवरणहरू सकेसम्म आधिकारिक स्रोतबाट प्रमाणित गरिएका छन्। कुनै जानकारी गलत भएमा अपडेट विकल्प प्रयोग गर्नुहोस्।',
+    dignityNote: 'मृतक र उनीहरूका परिवारको सम्मानका लागि, पहिचान नभएकाहरूको विवरण न्यूनतम जानकारीसहित मात्र देखाइन्छ।',
+  },
+};
+
+let current = 'ne';
+
+export function setLang(lang) {
+  current = STRINGS[lang] ? lang : 'ne';
+}
+
+export function getLang() {
+  return current;
+}
+
+export function t(key) {
+  const d = STRINGS[current];
+  return (d && d[key]) || STRINGS.en[key] || key;
+}
+
+export const STRING_KEYS = Object.keys(STRINGS.en);
