@@ -12,16 +12,17 @@ export const ENDPOINTS = {
   govEfforts: `${API_BASE}/government-efforts/`,
 };
 
-// Page size: the GoN API embeds base64 thumbnails per record, so pages are
-// heavy and the server is often slow. Keep pages small for fast first render.
-export const PAGE_LIMIT = 100;
+// Page size: the GoN API embeds base64 thumbnails per record and streams large
+// pages extremely slowly (100 records = minutes, truncated). Small pages return
+// in ~8s. 20 keeps first paint fast and drain pages reliable.
+export const PAGE_LIMIT = 20;
 
 // Per-request timeout so one hung page can never block rendering.
 export const REQUEST_TIMEOUT_MS = 30000;
 
 // Background sync cap: stop after this many persons (the rest remains
 // searchable on the official portal — link shown in the Info tab).
-export const MAX_SYNC_PERSONS = 2000;
+export const MAX_SYNC_PERSONS = 1000;
 
 export const EMERGENCY = {
   rescue: '1234', // GoN उद्धार / rescue hotline
