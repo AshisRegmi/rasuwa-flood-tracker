@@ -13,16 +13,18 @@ export const ENDPOINTS = {
 };
 
 // Page size: the GoN API embeds base64 thumbnails per record and streams large
-// pages extremely slowly (100 records = minutes, truncated). Small pages return
-// in ~8s. 20 keeps first paint fast and drain pages reliable.
+// pages extremely slowly. Found records are small (~650B) → 20/page is fine.
+// Lost records carry ~16KB thumbnails → use a smaller page for them.
 export const PAGE_LIMIT = 20;
+export const LOST_PAGE_LIMIT = 5;
 
 // Per-request timeout so one hung page can never block rendering.
 export const REQUEST_TIMEOUT_MS = 30000;
 
-// Background sync cap: stop after this many persons (the rest remains
-// searchable on the official portal — link shown in the Info tab).
-export const MAX_SYNC_PERSONS = 1000;
+// Background sync caps (the rest remains searchable on the official portal —
+// link shown in the Info tab). Lost pages are heavy, so cap lower.
+export const MAX_SYNC_LOST = 100;
+export const MAX_SYNC_FOUND = 300;
 
 export const EMERGENCY = {
   rescue: '1234', // GoN उद्धार / rescue hotline

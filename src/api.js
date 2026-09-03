@@ -21,9 +21,11 @@ async function getJSON(url) {
   }
 }
 
-export async function fetchPage(url, { page = 1, limit = PAGE_LIMIT } = {}) {
+export async function fetchPage(url, { page = 1, limit = PAGE_LIMIT, ...extra } = {}) {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  for (const [k, v] of Object.entries(extra)) params.set(k, String(v));
   const sep = url.includes('?') ? '&' : '?';
-  const body = await getJSON(`${url}${sep}page=${page}&limit=${limit}`);
+  const body = await getJSON(`${url}${sep}${params.toString()}`);
   const data = body.data || {};
   return {
     items: Array.isArray(data.items) ? data.items : [],

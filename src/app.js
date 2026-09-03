@@ -1,7 +1,7 @@
 // Sahara — app wiring. Pure logic lives in normalize.js / logic.js; this file
 // owns DOM rendering, state, events, and the sync lifecycle.
 
-import { ENDPOINTS, EMERGENCY, PAGE_LIMIT, MAX_SYNC_PERSONS } from './config.js';
+import { ENDPOINTS, EMERGENCY, PAGE_LIMIT, LOST_PAGE_LIMIT, MAX_SYNC_LOST, MAX_SYNC_FOUND } from './config.js';
 import { setLang, getLang, t } from './i18n.js';
 import {
   normalizePersons,
@@ -371,10 +371,11 @@ function setSync(state, label) {
 async function sync() {
   setSync('syncing', t('syncing'));
   try {
-    // Phase 1: first page of every endpoint. Each is guarded separately so a
-    // single failing/slow endpoint can't block the rest from rendering.
-    const [p1, b1, donationsRaw, effortsRaw, statsRaw] = await Promise.all([
-      fetchPage(ENDPOINTS.personReports, { page: 1, limit: PAGE_LIMIT }).catch((e) => { console.warn('persons p1 failed:', e.message); return null; }),
+    // Phase 1: first page of each feed. The API's default listing is mostly
+    // "found" records, so the "lost" feed must be requested with type=lost.
+    const [lost1, found1, b1, donationsRaw, effortsRaw, statsRaw] = await Promise.all([
+      fetchPage(ENDPOINTS.personReports, { page: 1, limit: LOST_PAGE_LIMIT, type: 'lost' }).catch((e) => { console.warn('lost p1 failed:', e.message); return null; }),
+      fetchPage(ENDPOINTS.personReports, { page: 1, limit: PAGE_LIMIT, type: 'found' }).catch((e) => { console.warn('found p1 failed:', e.message); return null; }),
       fetchPage(ENDPOINTS.deadBodies, { page: 1, limit: PAGE_LIMIT }).catch((e) => { console.warn('bodies p1 failed:', e.message); return null; }),
       fetchDonations().catch((e) => { console.warn('donations failed:', e.message); return { items: [] }; }),
       fetchPage(ENDPOINTS.govEfforts, { page: 1, limit: 50 }).catch(() => ({ items: [] })),
@@ -382,7 +383,7 @@ async function sync() {
     ]);
 
     snapshot = {
-      persons: normalizePersons(p1?.items || []),
+      persons: [...normalizePersons(lost1?.items || []), ...normalizePersons(found1?.items || [])],
       bodies: normalizeDeadBodies(b1?.items || []),
       donations: normalizeDonations(donationsRaw?.items || []),
       stats: statsRaw || {},
@@ -392,47 +393,50 @@ async function sync() {
         link: e.link,
       })),
       syncedAt: Date.now(),
-      personsTotal: p1?.total || 0,
+      personsTotal: (lost1?.total || 0) + (found1?.total || 0),
+      lostTotal: lost1?.total || 0,
+      foundTotal: found1?.total || 0,
       bodiesTotal: b1?.total || 0,
     };
     renderAll();
 
-    // Phase 2: drain more pages in the background up to the cap.
-    // A failed page stops the drain for that endpoint (keep what we have).
-    const drain = async (endpoint, total, normalize, append, cap, len) => {
+    // Phase 2: drain more pages in the background up to the caps.
+    // A failed page stops the drain for that feed (keep what we have).
+    const drain = async (endpoint, total, normalize, cap, extra, pageSize) => {
       let page = 2;
       const limit = Math.min(cap, total || cap);
-      while ((page - 1) * PAGE_LIMIT < limit) {
+      while ((page - 1) * pageSize < limit) {
         try {
-          const r = await fetchPage(endpoint, { page, limit: PAGE_LIMIT });
-          append(normalize(r.items));
+          const r = await fetchPage(endpoint, { page, limit: pageSize, ...extra });
+          snapshot.persons.push(...normalize(r.items));
         } catch (e) {
           console.warn(`drain stopped at page ${page}:`, e.message);
           break;
         }
         page += 1;
-        setSync('syncing', `${t('syncing')} ${formatCount(len())}/${formatCount(limit)}`);
+        setSync('syncing', `${t('syncing')} ${formatCount(snapshot.persons.length)}/${formatCount(limit + (snapshot.foundTotal || 0))}`);
         if (page % 3 === 0) renderAll(); // periodic UI refresh
       }
     };
 
     await Promise.all([
-      drain(
-        ENDPOINTS.personReports,
-        snapshot.personsTotal,
-        normalizePersons,
-        (xs) => { snapshot.persons.push(...xs); },
-        MAX_SYNC_PERSONS,
-        () => snapshot.persons.length
-      ),
-      drain(
-        ENDPOINTS.deadBodies,
-        snapshot.bodiesTotal,
-        normalizeDeadBodies,
-        (xs) => { snapshot.bodies.push(...xs); },
-        Number.MAX_SAFE_INTEGER,
-        () => snapshot.bodies.length
-      ),
+      drain(ENDPOINTS.personReports, snapshot.lostTotal, normalizePersons, MAX_SYNC_LOST, { type: 'lost' }, LOST_PAGE_LIMIT),
+      drain(ENDPOINTS.personReports, snapshot.foundTotal, normalizePersons, MAX_SYNC_FOUND, { type: 'found' }, PAGE_LIMIT),
+      (async () => {
+        // bodies: full drain (small records)
+        let page = 2;
+        const limit = snapshot.bodiesTotal || 0;
+        while ((page - 1) * PAGE_LIMIT < limit) {
+          try {
+            const r = await fetchPage(ENDPOINTS.deadBodies, { page, limit: PAGE_LIMIT });
+            snapshot.bodies.push(...normalizeDeadBodies(r.items));
+          } catch (e) {
+            console.warn(`bodies drain stopped at page ${page}:`, e.message);
+            break;
+          }
+          page += 1;
+        }
+      })(),
     ]);
 
     await saveSnapshot(snapshot);
