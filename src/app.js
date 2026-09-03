@@ -218,7 +218,7 @@ function renderDead() {
   const empty = $('#dead-empty');
   if (results.length === 0) {
     list.innerHTML = '';
-    empty.textContent = t(ui.deadQ ? 'noResults' : 'emptyDead');
+    empty.textContent = t(ui.deadQ ? 'noResults' : ui.deadStatus === 'identified' ? 'emptyIdentified' : 'emptyDead');
     empty.classList.remove('hidden');
     $('#dead-more').classList.add('hidden');
   } else {
