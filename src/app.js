@@ -337,6 +337,10 @@ function selectDead(status) {
     seg.dataset.idx = status === 'identified' ? '0' : '1';
     seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.status === status));
   }
+  // Official links card: shown on the identified segment (which is empty in the
+  // API feed — identified victims are confirmed with families, not published).
+  const links = $('#identified-links');
+  if (links) links.classList.toggle('hidden', status !== 'identified');
   renderDead();
 }
 
