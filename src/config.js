@@ -12,8 +12,16 @@ export const ENDPOINTS = {
   govEfforts: `${API_BASE}/government-efforts/`,
 };
 
-// 500 is the largest page size the portal's own UI requests; API default is 100.
-export const PAGE_LIMIT = 500;
+// Page size: the GoN API embeds base64 thumbnails per record, so pages are
+// heavy and the server is often slow. Keep pages small for fast first render.
+export const PAGE_LIMIT = 100;
+
+// Per-request timeout so one hung page can never block rendering.
+export const REQUEST_TIMEOUT_MS = 30000;
+
+// Background sync cap: stop after this many persons (the rest remains
+// searchable on the official portal — link shown in the Info tab).
+export const MAX_SYNC_PERSONS = 2000;
 
 export const EMERGENCY = {
   rescue: '1234', // GoN उद्धार / rescue hotline

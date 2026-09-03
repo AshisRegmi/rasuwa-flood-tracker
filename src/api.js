@@ -2,14 +2,23 @@
 // The portal returns `{ success, data: { items, total, page, limit } }`
 // and has open CORS (Access-Control-Allow-Origin: *), so a browser can call it directly.
 
-import { ENDPOINTS, PAGE_LIMIT } from './config.js';
+import { ENDPOINTS, PAGE_LIMIT, REQUEST_TIMEOUT_MS } from './config.js';
 
 async function getJSON(url) {
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-  const body = await res.json();
-  if (body && body.success === false) throw new Error(body.message || 'API rejected request');
-  return body;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: ctrl.signal,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+    const body = await res.json();
+    if (body && body.success === false) throw new Error(body.message || 'API rejected request');
+    return body;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function fetchPage(url, { page = 1, limit = PAGE_LIMIT } = {}) {

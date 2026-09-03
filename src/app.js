@@ -1,7 +1,7 @@
 // Sahara — app wiring. Pure logic lives in normalize.js / logic.js; this file
 // owns DOM rendering, state, events, and the sync lifecycle.
 
-import { ENDPOINTS, EMERGENCY, PAGE_LIMIT } from './config.js';
+import { ENDPOINTS, EMERGENCY, PAGE_LIMIT, MAX_SYNC_PERSONS } from './config.js';
 import { setLang, getLang, t } from './i18n.js';
 import {
   normalizePersons,
@@ -371,54 +371,78 @@ function setSync(state, label) {
 async function sync() {
   setSync('syncing', t('syncing'));
   try {
-    // Phase 1: first page of every endpoint (fast) so the UI renders immediately.
+    // Phase 1: first page of every endpoint. Each is guarded separately so a
+    // single failing/slow endpoint can't block the rest from rendering.
     const [p1, b1, donationsRaw, effortsRaw, statsRaw] = await Promise.all([
-      fetchPage(ENDPOINTS.personReports, { page: 1, limit: PAGE_LIMIT }),
-      fetchPage(ENDPOINTS.deadBodies, { page: 1, limit: PAGE_LIMIT }),
-      fetchDonations(),
-      fetchPage(ENDPOINTS.govEfforts, { page: 1, limit: 50 }),
-      fetchStats(),
+      fetchPage(ENDPOINTS.personReports, { page: 1, limit: PAGE_LIMIT }).catch((e) => { console.warn('persons p1 failed:', e.message); return null; }),
+      fetchPage(ENDPOINTS.deadBodies, { page: 1, limit: PAGE_LIMIT }).catch((e) => { console.warn('bodies p1 failed:', e.message); return null; }),
+      fetchDonations().catch((e) => { console.warn('donations failed:', e.message); return { items: [] }; }),
+      fetchPage(ENDPOINTS.govEfforts, { page: 1, limit: 50 }).catch(() => ({ items: [] })),
+      fetchStats().catch(() => ({})),
     ]);
 
     snapshot = {
-      persons: normalizePersons(p1.items),
-      bodies: normalizeDeadBodies(b1.items),
-      donations: normalizeDonations(donationsRaw.items),
-      stats: statsRaw,
-      efforts: (effortsRaw.items || []).map((e) => ({
+      persons: normalizePersons(p1?.items || []),
+      bodies: normalizeDeadBodies(b1?.items || []),
+      donations: normalizeDonations(donationsRaw?.items || []),
+      stats: statsRaw || {},
+      efforts: (effortsRaw?.items || []).map((e) => ({
         title: e.title,
         agency: e.agency,
         link: e.link,
       })),
       syncedAt: Date.now(),
-      personsTotal: p1.total || p1.items.length,
-      bodiesTotal: b1.total || b1.items.length,
+      personsTotal: p1?.total || 0,
+      bodiesTotal: b1?.total || 0,
     };
     renderAll();
 
-    // Phase 2: drain remaining pages in the background, appending + re-rendering.
-    const drain = async (endpoint, total, normalize, append) => {
+    // Phase 2: drain more pages in the background up to the cap.
+    // A failed page stops the drain for that endpoint (keep what we have).
+    const drain = async (endpoint, total, normalize, append, cap, len) => {
       let page = 2;
-      while ((page - 1) * PAGE_LIMIT < total) {
-        const r = await fetchPage(endpoint, { page, limit: PAGE_LIMIT });
-        append(normalize(r.items));
+      const limit = Math.min(cap, total || cap);
+      while ((page - 1) * PAGE_LIMIT < limit) {
+        try {
+          const r = await fetchPage(endpoint, { page, limit: PAGE_LIMIT });
+          append(normalize(r.items));
+        } catch (e) {
+          console.warn(`drain stopped at page ${page}:`, e.message);
+          break;
+        }
         page += 1;
+        setSync('syncing', `${t('syncing')} ${formatCount(len())}/${formatCount(limit)}`);
         if (page % 3 === 0) renderAll(); // periodic UI refresh
       }
     };
 
     await Promise.all([
-      drain(ENDPOINTS.personReports, snapshot.personsTotal, normalizePersons, (xs) => snapshot.persons.push(...xs)),
-      drain(ENDPOINTS.deadBodies, snapshot.bodiesTotal, normalizeDeadBodies, (xs) => snapshot.bodies.push(...xs)),
+      drain(
+        ENDPOINTS.personReports,
+        snapshot.personsTotal,
+        normalizePersons,
+        (xs) => { snapshot.persons.push(...xs); },
+        MAX_SYNC_PERSONS,
+        () => snapshot.persons.length
+      ),
+      drain(
+        ENDPOINTS.deadBodies,
+        snapshot.bodiesTotal,
+        normalizeDeadBodies,
+        (xs) => { snapshot.bodies.push(...xs); },
+        Number.MAX_SAFE_INTEGER,
+        () => snapshot.bodies.length
+      ),
     ]);
 
     await saveSnapshot(snapshot);
-    setSync('online', `${t('lastSynced')} ${formatDate(snapshot.syncedAt, getLang())}`);
+    const partial = snapshot.personsTotal > 0 && snapshot.persons.length < snapshot.personsTotal;
+    setSync('online', `${t('lastSynced')} ${formatDate(snapshot.syncedAt, getLang())}${partial ? ` · ${t('partial')}` : ''}`);
     renderAll();
   } catch (err) {
     console.warn('sync failed:', err);
     setSync('offline', t('offline'));
-    if (!snapshot) renderAll(); // still render any cached data
+    if (snapshot) renderAll();
   }
 }
 
