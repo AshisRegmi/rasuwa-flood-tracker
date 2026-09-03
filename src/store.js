@@ -40,6 +40,14 @@ async function withStore(mode, fn) {
       reject(e);
       return;
     }
+    // Wait for the request itself to settle (tx.oncomplete is not enough for
+    // reads — the value lives on req.result, which is undefined until success).
+    if (out instanceof IDBRequest) {
+      out.onsuccess = () => resolve(out.result);
+      out.onerror = () => reject(out.error);
+      tx.onabort = () => reject(tx.error || new Error('transaction aborted'));
+      return;
+    }
     tx.oncomplete = () => {
       db.close();
       resolve(out);
@@ -62,8 +70,6 @@ export function setItem(key, value) {
 export function getItem(key) {
   return withStore('readonly', (store) => store.get(key));
 }
-
-// ---- snapshot helpers ------------------------------------------------------
 
 export function saveSnapshot(snapshot) {
   return setItem('snapshot', snapshot);

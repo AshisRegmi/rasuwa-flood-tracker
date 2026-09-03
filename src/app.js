@@ -546,7 +546,7 @@ async function boot() {
 
   // paint cached data immediately if available
   const cached = await loadSnapshot().catch(() => null);
-  if (cached) {
+  if (cached && Array.isArray(cached.persons) && Array.isArray(cached.bodies)) {
     snapshot = cached;
     setSync('online', `${t('lastSynced')} ${formatDate(cached.syncedAt, getLang())}`);
     renderAll();
