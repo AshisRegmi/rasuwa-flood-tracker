@@ -9,6 +9,7 @@ export const ENDPOINTS = {
   deadBodies: `${API_BASE}/dead-bodies/`,
   donations: `${API_BASE}/donations/`,
   stats: `${API_BASE}/stats/sources`,
+  statsOverview: `${API_BASE}/stats`,
   govEfforts: `${API_BASE}/government-efforts/`,
 };
 

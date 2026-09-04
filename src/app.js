@@ -88,7 +88,7 @@ function renderStats() {
   $('#stat-found').textContent = formatCount(found);
   $('#stat-dead').textContent = formatCount(identified + unidentified);
   // Official rescued count from the portal's own /api/stats (persons.rescued).
-  const officialRescued = Number(snapshot.stats?.persons?.rescued) || 0;
+  const officialRescued = Number(snapshot.statsOverview?.persons?.rescued) || 0;
   $('#stat-rescued').textContent = formatCount(officialRescued);
 }
 
@@ -412,13 +412,21 @@ async function sync() {
   try {
     // Phase 1: first page of each feed. The API's default listing is mostly
     // "found" records, so the "lost" feed must be requested with type=lost.
-    const [lost1, found1, b1, donationsRaw, effortsRaw, statsRaw] = await Promise.all([
+    const [lost1, found1, b1, donationsRaw, effortsRaw, statsRaw, overviewRaw] = await Promise.all([
       fetchPage(ENDPOINTS.personReports, { page: 1, limit: LOST_PAGE_LIMIT, type: 'lost' }).catch((e) => { console.warn('lost p1 failed:', e.message); return null; }),
       fetchPage(ENDPOINTS.personReports, { page: 1, limit: PAGE_LIMIT, type: 'found' }).catch((e) => { console.warn('found p1 failed:', e.message); return null; }),
       fetchPage(ENDPOINTS.deadBodies, { page: 1, limit: PAGE_LIMIT }).catch((e) => { console.warn('bodies p1 failed:', e.message); return null; }),
       fetchDonations().catch((e) => { console.warn('donations failed:', e.message); return { items: [] }; }),
       fetchPage(ENDPOINTS.govEfforts, { page: 1, limit: 50 }).catch(() => ({ items: [] })),
       fetchStats().catch(() => ({})),
+      (async () => {
+        try {
+          const r = await fetch(ENDPOINTS.statsOverview, { headers: { Accept: 'application/json' } });
+          if (!r.ok) return {};
+          const body = await r.json();
+          return body.data || {};
+        } catch { return {}; }
+      })(),
     ]);
 
     snapshot = {
@@ -426,6 +434,7 @@ async function sync() {
       bodies: normalizeDeadBodies(b1?.items || []),
       donations: normalizeDonations(donationsRaw?.items || []),
       stats: statsRaw || {},
+      statsOverview: overviewRaw || {},
       efforts: (effortsRaw?.items || []).map((e) => ({
         title: e.title,
         agency: e.agency,
