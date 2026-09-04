@@ -5,6 +5,9 @@ import { setTimeout as sleep } from 'node:timers/promises';
 const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const PORT = 9345;
 
+const TARGET_URL = process.argv[2] || 'https://ashisregmi.github.io/rasuwa-flood-tracker/#foreign';
+const WAIT_MS = Number(process.argv[3] || 150000);
+
 const proc = spawn(EDGE, [
   '--headless=new', '--disable-gpu',
   `--remote-debugging-port=${PORT}`,
@@ -38,8 +41,8 @@ const evalJS = async (expr) => {
 
 await send('Runtime.enable');
 await send('Page.enable');
-await send('Page.navigate', { url: 'https://ashisregmi.github.io/rasuwa-flood-tracker/#foreign' });
-await sleep(55000); // wait for phase 2 incl. foreign keyword searches
+await send('Page.navigate', { url: TARGET_URL });
+await sleep(WAIT_MS); // wait for phase 2 incl. foreign keyword searches
 
 const state = await evalJS(`JSON.stringify({
   rescuedStat: document.getElementById('stat-rescued').textContent,
