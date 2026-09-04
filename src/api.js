@@ -63,7 +63,8 @@ export async function fetchStats() {
 }
 
 // Full-text search the API's person-reports (no type filter — covers both feeds).
-export async function fetchSearch(term, { limit = 100 } = {}) {
+// The API embeds base64 thumbnails in results, so keep limits small.
+export async function fetchSearch(term, { limit = 30 } = {}) {
   const body = await getJSON(
     `${ENDPOINTS.personReports}?page=1&limit=${limit}&search=${encodeURIComponent(term)}`
   );

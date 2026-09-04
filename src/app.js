@@ -492,7 +492,9 @@ async function sync() {
         const acc = [];
         for (const term of FOREIGN_TERMS) {
           try {
-            const items = await fetchSearch(term, { limit: 100 });
+            // Small page per term: results embed base64 thumbnails and stream
+            // slowly, so large limits hit the request timeout.
+            const items = await fetchSearch(term, { limit: 30 });
             for (const item of items) {
               const n = normalizePersons([item])[0];
               if (n && !seen.has(n.id)) {
