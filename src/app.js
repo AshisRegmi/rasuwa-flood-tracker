@@ -82,14 +82,17 @@ function toggleLang() {
 
 function renderStats() {
   if (!snapshot) return;
-  const { lost, found } = countByState(snapshot.persons);
-  const { identified, unidentified } = countBodiesByStatus(snapshot.bodies);
-  $('#stat-lost').textContent = formatCount(lost);
-  $('#stat-found').textContent = formatCount(found);
-  $('#stat-dead').textContent = formatCount(identified + unidentified);
-  // Official rescued count from the portal's own /api/stats (persons.rescued).
-  const officialRescued = Number(snapshot.statsOverview?.persons?.rescued) || 0;
-  $('#stat-rescued').textContent = formatCount(officialRescued);
+  // Prefer the portal's official aggregates (/api/stats). Fall back to local
+  // sync counts only when the overview is missing (offline / older cache).
+  const ov = snapshot.statsOverview?.persons || {};
+  const local = countByState(snapshot.persons);
+  const localBodies = countBodiesByStatus(snapshot.bodies);
+  const officialBodies = Number(snapshot.stats?.bodies?.count) || 0;
+
+  $('#stat-lost').textContent = formatCount(Number(ov.lost) > 0 ? ov.lost : local.lost);
+  $('#stat-found').textContent = formatCount(Number(ov.found) > 0 ? ov.found : local.found);
+  $('#stat-dead').textContent = formatCount(officialBodies > 0 ? officialBodies : localBodies.identified + localBodies.unidentified);
+  $('#stat-rescued').textContent = formatCount(Number(ov.rescued) || 0);
 }
 
 // ---- render: people ----------------------------------------------------------

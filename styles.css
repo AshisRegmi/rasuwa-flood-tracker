@@ -188,6 +188,13 @@ body {
 .stat.dead .num { color: var(--neutral); }
 .stat.rescued .num { color: var(--accent); }
 
+.stats-note {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: var(--tertiary);
+  text-align: center;
+}
+
 /* ---- segmented control ---------------------------------------------------- */
 
 .seg {
