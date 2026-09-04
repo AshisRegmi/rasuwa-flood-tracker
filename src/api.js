@@ -61,3 +61,11 @@ export async function fetchStats() {
   const body = await getJSON(ENDPOINTS.stats);
   return body.data || {};
 }
+
+// Full-text search the API's person-reports (no type filter — covers both feeds).
+export async function fetchSearch(term, { limit = 100 } = {}) {
+  const body = await getJSON(
+    `${ENDPOINTS.personReports}?page=1&limit=${limit}&search=${encodeURIComponent(term)}`
+  );
+  return (body.data || {}).items || [];
+}

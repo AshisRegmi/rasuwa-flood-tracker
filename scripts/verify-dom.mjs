@@ -15,7 +15,7 @@ for (const m of app.matchAll(/\$\('([A-Za-z0-9_-]+)'\)/g)) ids.add(m[1]);
 for (const m of app.matchAll(/getElementById\('([A-Za-z0-9_-]+)'\)/g)) ids.add(m[1]);
 // dynamic view ids built via template literal `#view-${tab}`
 for (const m of app.matchAll(/`#view-\$\{(\w+)\}`/g)) {
-  for (const t of ['people', 'dead', 'donate', 'info']) ids.add(`view-${t}`);
+  for (const t of ['people', 'dead', 'donate', 'info', 'foreign']) ids.add(`view-${t}`);
 }
 
 const missing = [...ids].filter((i) => !html.includes(`id="${i}"`));

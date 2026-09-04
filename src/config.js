@@ -26,6 +26,14 @@ export const REQUEST_TIMEOUT_MS = 30000;
 export const MAX_SYNC_LOST = 100;
 export const MAX_SYNC_FOUND = 300;
 
+// Foreign-national detection: the person-reports API has no nationality field,
+// so we query the API's own full-text search with nationality keywords and
+// dedupe by _id. The official country-wise list lives on NDRRMA (linked in-app).
+export const FOREIGN_TERMS = [
+  'malaysia', 'indian', 'chinese', 'tourist', 'foreign', 'british',
+  'american', 'australian', 'kailash',
+];
+
 export const EMERGENCY = {
   rescue: '1234', // GoN उद्धार / rescue hotline
   police: '100',

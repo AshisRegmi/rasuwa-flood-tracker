@@ -1,7 +1,7 @@
 // Sahara — app wiring. Pure logic lives in normalize.js / logic.js; this file
 // owns DOM rendering, state, events, and the sync lifecycle.
 
-import { ENDPOINTS, EMERGENCY, PAGE_LIMIT, LOST_PAGE_LIMIT, MAX_SYNC_LOST, MAX_SYNC_FOUND } from './config.js';
+import { ENDPOINTS, EMERGENCY, PAGE_LIMIT, LOST_PAGE_LIMIT, MAX_SYNC_LOST, MAX_SYNC_FOUND, FOREIGN_TERMS } from './config.js';
 import { setLang, getLang, t } from './i18n.js';
 import {
   normalizePersons,
@@ -22,6 +22,7 @@ import {
   fetchPage,
   fetchDonations,
   fetchStats,
+  fetchSearch,
 } from './api.js';
 import { saveSnapshot, loadSnapshot, savePrefs, loadPrefs } from './store.js';
 
@@ -53,9 +54,10 @@ const ui = {
   deadQ: '',
   peopleLimit: RENDER_STEP,
   deadLimit: RENDER_STEP,
+  foreignFilter: 'all',
 };
 
-let snapshot = null; // { persons, bodies, donations, stats, efforts, syncedAt }
+let snapshot = null; // { persons, bodies, donations, stats, efforts, syncedAt, foreign }
 
 // ---- i18n -------------------------------------------------------------------
 
@@ -85,6 +87,9 @@ function renderStats() {
   $('#stat-lost').textContent = formatCount(lost);
   $('#stat-found').textContent = formatCount(found);
   $('#stat-dead').textContent = formatCount(identified + unidentified);
+  // Official rescued count from the portal's own /api/stats (persons.rescued).
+  const officialRescued = Number(snapshot.stats?.persons?.rescued) || 0;
+  $('#stat-rescued').textContent = formatCount(officialRescued);
 }
 
 // ---- render: people ----------------------------------------------------------
@@ -234,6 +239,35 @@ function renderDead() {
   }
 }
 
+// ---- render: foreign nationals --------------------------------------------------
+
+function renderForeign() {
+  if (!snapshot) return;
+  const foreign = snapshot.foreign || [];
+  const filtered = ui.foreignFilter === 'all'
+    ? foreign
+    : foreign.filter((p) => p.type === ui.foreignFilter);
+
+  const chips = ['all', 'found', 'lost']
+    .map((f) => {
+      const labels = { all: 'foreignFilterAll', found: 'foreignFilterFound', lost: 'foreignFilterLost' };
+      return `<button class="chip ${ui.foreignFilter === f ? 'on' : ''}" data-foreign="${f}">${esc(t(labels[f]))}</button>`;
+    })
+    .join('');
+  $('#chips-foreign').innerHTML = chips;
+
+  const list = $('#foreign-list');
+  const empty = $('#foreign-empty');
+  if (filtered.length === 0) {
+    list.innerHTML = '';
+    empty.textContent = t('noResults');
+    empty.classList.remove('hidden');
+  } else {
+    empty.classList.add('hidden');
+    list.innerHTML = filtered.map(personCard).join('');
+  }
+}
+
 // ---- render: donate -----------------------------------------------------------
 
 function donateCard(d) {
@@ -348,6 +382,7 @@ function renderAll() {
   renderStats();
   selectPeople(ui.peopleState);
   selectDead(ui.deadStatus);
+  renderForeign();
   renderDonate();
   renderInfo();
 }
@@ -441,6 +476,28 @@ async function sync() {
           page += 1;
         }
       })(),
+      (async () => {
+        // Foreign nationals: keyword searches on the API's full-text search,
+        // deduped by id. Runs in background; failures leave the list empty.
+        const seen = new Set();
+        const acc = [];
+        for (const term of FOREIGN_TERMS) {
+          try {
+            const items = await fetchSearch(term, { limit: 100 });
+            for (const item of items) {
+              const n = normalizePersons([item])[0];
+              if (n && !seen.has(n.id)) {
+                seen.add(n.id);
+                acc.push(n);
+              }
+            }
+          } catch (e) {
+            console.warn(`foreign search failed (${term}):`, e.message);
+          }
+        }
+        snapshot.foreign = acc;
+        renderForeign();
+      })(),
     ]);
 
     await saveSnapshot(snapshot);
@@ -530,6 +587,14 @@ function bindEvents() {
   };
   $('#chips-people').addEventListener('click', onChip);
   $('#chips-people-src').addEventListener('click', onChip);
+
+  // foreign filter chips
+  $('#chips-foreign').addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    ui.foreignFilter = chip.dataset.foreign;
+    renderForeign();
+  });
 
   // load more
   $('#people-more').addEventListener('click', () => {

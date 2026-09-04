@@ -32,6 +32,7 @@
       <div class="stat lost"><div class="num" id="stat-lost">—</div><div class="lbl" data-i18n="totalLost">बेपत्ता</div></div>
       <div class="stat found"><div class="num" id="stat-found">—</div><div class="lbl" data-i18n="totalFound">भेटिएका</div></div>
       <div class="stat dead"><div class="num" id="stat-dead">—</div><div class="lbl" data-i18n="totalDead">मृतक</div></div>
+      <div class="stat rescued"><div class="num" id="stat-rescued">—</div><div class="lbl" data-i18n="totalRescued">उद्धार</div></div>
     </section>
 
     <!-- PEOPLE -->
@@ -87,6 +88,22 @@
       <div class="empty hidden" id="dead-empty"></div>
     </section>
 
+    <!-- FOREIGN -->
+    <section class="view" id="view-foreign">
+      <h2 class="section-title" data-i18n="foreignTitle">विदेशी नागरिक</h2>
+      <p class="muted" data-i18n="foreignLead">विदेशी नागरिकहरूको विवरण राष्ट्रियता कीवर्ड खोजबाट जोडिएको छ — आधिकारिक देशअनुसार सूची NDRRMA मा छ।</p>
+      <div class="chips" id="chips-foreign"></div>
+      <div class="list" id="foreign-list"></div>
+      <div class="empty hidden" id="foreign-empty"></div>
+      <div class="card" id="foreign-links">
+        <p class="muted" data-i18n="foreignLinksLead">आधिकारिक स्रोतहरू:</p>
+        <div class="effort"><a href="https://ndrrma.gov.np/np/rescue" target="_blank" rel="noopener">NDRRMA — उद्धार सूची</a>
+          <div class="agency">विदेशी नागरिक उद्धारको आधिकारिक देशअनुसार विवरण</div></div>
+        <div class="effort"><a href="https://www.nepalpolice.gov.np/flash-updates/" target="_blank" rel="noopener">नेपाल प्रहरी — फ्ल्यास अपडेट</a>
+          <div class="agency">विदेशी नागरिक सम्बन्धी आधिकारिक सूचना</div></div>
+      </div>
+    </section>
+
     <!-- DONATE -->
     <section class="view" id="view-donate">
       <h2 class="section-title" data-i18n="donateTitle">सहयोग गर्नुहोस्</h2>
@@ -126,6 +143,10 @@
     <button class="tab" data-tab="dead">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v13M8 7.5h8"/></svg>
       <span data-i18n="tabDead">मृतक</span>
+    </button>
+    <button class="tab" data-tab="foreign">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3.5 9h17M3.5 15h17M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
+      <span data-i18n="tabForeign">विदेशी</span>
     </button>
     <button class="tab" data-tab="donate">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-9.5A4 4 0 0 1 12 7a4 4 0 0 1 7 3.5c0 5-7 9.5-7 9.5z"/></svg>

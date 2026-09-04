@@ -165,18 +165,18 @@ body {
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
   margin: 14px 0 6px;
 }
 .stat {
   background: var(--bg-elevated);
   border-radius: var(--radius-card);
-  padding: 15px 12px 13px;
+  padding: 12px 8px 10px;
   box-shadow: var(--shadow-card);
 }
 .stat .num {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -186,6 +186,7 @@ body {
 .stat.lost .num { color: var(--danger); }
 .stat.found .num { color: var(--success); }
 .stat.dead .num { color: var(--neutral); }
+.stat.rescued .num { color: var(--accent); }
 
 /* ---- segmented control ---------------------------------------------------- */
 
@@ -488,7 +489,7 @@ body {
   bottom: 0;
   z-index: 30;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   background: color-mix(in srgb, var(--bg-elevated) 82%, transparent);
   backdrop-filter: saturate(180%) blur(24px);
   -webkit-backdrop-filter: saturate(180%) blur(24px);
